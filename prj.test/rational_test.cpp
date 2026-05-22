@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "doctest.h" 
+#include "../prj.thirdparty/doctest.h"
 
 TEST_CASE("[rational] - ctor default") {
     Rational r;
