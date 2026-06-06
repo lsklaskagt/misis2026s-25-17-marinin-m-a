@@ -10,4 +10,4 @@ add_subdirectory(prj.labs)
 add_subdirectory(prj.test)
 
 add_executable(main_app main.cpp)
-target_link_libraries(main_app rational complex arrayd bitsetd) 
+target_link_libraries(main_app bitsetd) 
