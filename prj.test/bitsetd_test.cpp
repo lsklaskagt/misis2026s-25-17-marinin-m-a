@@ -1,92 +1,92 @@
 #include <bitsetd/bitsetd.hpp>
+#include <stdexcept>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <doctest/doctest.h>
+#include "../prj.thirdparty/doctest.h"
 
 TEST_CASE("[bitsetd] - ctor default") {
-  BitsetD b;
-  CHECK(0 == b.size());
+    BitsetD bs;
+    CHECK(bs.size() == 0);
 }
 
-//TEST_CASE("[bitsetd] - ctor copy") {
-//  BitsetD s;
-//  BitsetD t0(s);
-//  CHECK(s.size() == t0.size());
-//}
-
-TEST_CASE("[bitsetd] - ctor uint64_t") {
-  BitsetD b64(0xAAAABBBBCCCCDDDDUL, 64);
-  CHECK(64 == b64.size());
-  BitsetD b33(0xAAAABBBBCCCCDDDDUL, 33);
-  CHECK(33 == b33.size());
+TEST_CASE("[bitsetd] - ctor size") {
+    BitsetD bs(35, true);
+    CHECK(bs.size() == 35);
+    CHECK(bs.get(0) == true);
+    CHECK(bs.get(34) == true);
+    CHECK_THROWS_AS(bs.get(35), std::out_of_range);
 }
 
-TEST_CASE("[bitsetd] - set and get contracts") {
-  BitsetD b0;
-  CHECK_THROWS(b0.get(-1));
-  CHECK_THROWS(b0.get(0));
-  CHECK_THROWS(b0.set(-1, true));
-  CHECK_THROWS(b0.set(0, true));
-  BitsetD b64(0xCDULL);
-  CHECK_THROWS(b0.get(-1));
-  CHECK_THROWS(b0.get(64));
-  CHECK_THROWS(b0.set(-1, true));
-  CHECK_THROWS(b0.set(64, true));
+TEST_CASE("[bitsetd] - ctor mask") {
+    BitsetD bs(0b1011ULL, 4); 
+    CHECK(bs.size() == 4);
+    CHECK(bs.get(0) == true);
+    CHECK(bs.get(1) == true);
+    CHECK(bs.get(2) == false);
+    CHECK(bs.get(3) == true);
 }
 
-TEST_CASE("[bitsetd] - set and get") {
-  BitsetD b1{ static_cast<uint64_t>(0b1010'0101'1111'0000), 15 };
-  CHECK(!b1.get(0));
-  CHECK(!b1.get(3));
-  CHECK(b1.get(4));
-  CHECK(b1.get(8));
-
-  //BitsetD b64(0x0ULL);
-  //bool v = false;
-  //for (std::int32_t i = 0; i < b64.size(); i += 1) {
-  //  CHECK(!b64.get(i));
-  //  v = b64.get(i);
-  //  b64.set(true, i); ;
-  //  CHECK(b64.get(i));
-  //  b64.set(false, i); ;
-  //  CHECK(!b64.get(i));
-  //}
+TEST_CASE("[bitsetd] - get and set") {
+    BitsetD bs(10, false);
+    bs.set(5, true);
+    CHECK(bs.get(5) == true);
+    CHECK(bs.get(4) == false);
+    
+    bs.set(5, false);
+    CHECK(bs.get(5) == false);
+    
+    CHECK_THROWS_AS(bs.get(-1), std::out_of_range);
+    CHECK_THROWS_AS(bs.set(10, true), std::out_of_range);
 }
 
-TEST_CASE("[bitsetd] - op[]") {
-  BitsetD b64(0xAAAABBBBCCCCDDDDULL, 64);
-  CHECK(b64[0] == b64.get(0));
-  for (std::int32_t i = 0; i < b64.size(); i += 1) {
-    auto v = b64[i];
-    b64[i] = true;
-    CHECK(b64[i]);
-    b64[i] = false;
-    CHECK(!b64[i]);
-
-  }
-  CHECK(b64.get(0) == b64[0]);
-
-
-  CHECK(64 == b64.size());
-  BitsetD b33(0xAAAABBBBCCCCDDDDUL, 33);
-  CHECK(33 == b33.size());
+TEST_CASE("[bitsetd] - operator[] verification") {
+    BitsetD bs(5, false);
+    bs[2] = true;  
+    CHECK(bs.get(2) == true);
+    
+    const BitsetD& cbs = bs;
+    bool val = cbs[2]; 
+    CHECK(val == true);
 }
 
-TEST_CASE("[bitsetd] - op[] const") {
-  uint64_t mask = 1ull;
-  const auto bits = 0b0101'1010'1111'0000ull;
-  const BitsetD b1(bits, sizeof(bits) * 8);
-  for (int32_t i = 0; i < sizeof(bits) * 8; i += 1) {
-    CHECK(b1[i] == bool(bits & mask));
-    mask <<= 1;
-  }
+TEST_CASE("[bitsetd] - invert and fill") {
+    BitsetD bs(5, false);
+    bs.invert();
+    CHECK(bs.get(0) == true);
+    CHECK(bs.get(4) == true);
+    
+    bs.fill(false);
+    CHECK(bs.get(0) == false);
 }
 
-TEST_CASE("[bitsetd] - ctor move") {
-  const auto bits = 0b0101'1010'1111'0000ull;
-  BitsetD s(bits, 59);
-  const BitsetD c(s);
-  const BitsetD r(std::move(s));
-  CHECK(0 == s.size());
-  CHECK(c == r);
+TEST_CASE("[bitsetd] - bitwise operations") {
+    BitsetD a(0b1010ULL, 4);
+    BitsetD b(0b1100ULL, 4);
+    
+    BitsetD and_res = a & b;
+    CHECK(static_cast<uint32_t>(and_res) == 0b1000);
+    
+    BitsetD or_res = a | b;
+    CHECK(static_cast<uint32_t>(or_res) == 0b1110);
+    
+    BitsetD xor_res = a ^ b;
+    CHECK(static_cast<uint32_t>(xor_res) == 0b0110);
+}
+
+TEST_CASE("[bitsetd] - shifts") {
+    BitsetD bs(0b0001ULL, 4);
+    bs <<= 2;
+    CHECK(static_cast<uint32_t>(bs) == 0b0100);
+    
+    bs >>= 1;
+    CHECK(static_cast<uint32_t>(bs) == 0b0010);
+}
+
+TEST_CASE("[bitsetd] - to_string formatting") {
+    BitsetD bs(5, false);
+    bs.set(0, true);
+    bs.set(4, true); 
+    
+    CHECK(bs.to_string(BitsetD::StrFormat::BinNoPreSep) == "10001");
+    CHECK(bs.to_string(BitsetD::StrFormat::Bin) == "b1'0001");
 }
