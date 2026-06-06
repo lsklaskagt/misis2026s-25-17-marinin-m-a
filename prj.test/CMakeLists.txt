@@ -1,6 +1,3 @@
-add_executable(arrayd_test arrayd_test.cpp)
-target_link_libraries(arrayd_test arrayd)
-
 add_executable(arrayt_test arrayt_test.cpp)
 target_link_libraries(arrayt_test arrayt)
 
