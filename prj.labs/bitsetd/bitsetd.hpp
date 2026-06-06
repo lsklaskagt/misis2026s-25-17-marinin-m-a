@@ -182,4 +182,4 @@ inline BitsetD operator^(const BitsetD& lhs, const BitsetD& rhs) {
   return BitsetD(lhs).operator^=(rhs);
 }
 
-#endif //MARININ_M_A_25_17_RATIONAL_HPP
+#endif //MARININ_M_A_25_17_BITSETD_HPP
