@@ -1,9 +1,7 @@
-// 2026 by Dmitry Polevoy 
-// МИСИС 2026 весна курс ООП
 
 #pragma once
-#ifndef BITSETD_BITSETD_HPP_20260214
-#define BITSETD_BITSETD_HPP_20260214
+#ifndef MARININ_M_A_25_17_BITSETD_HPP
+#define MARININ_M_A_25_17_BITSETD_HPP
 
 #include <cstdint>
 #include <iosfwd>
@@ -185,4 +183,4 @@ inline BitsetD operator^(const BitsetD& lhs, const BitsetD& rhs) {
   return BitsetD(lhs).operator^=(rhs);
 }
 
-#endif
+#endif //MARININ_M_A_25_17_RATIONAL_HPP
