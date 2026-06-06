@@ -1,4 +1,3 @@
-
 #pragma once
 #ifndef MARININ_M_A_25_17_BITSETD_HPP
 #define MARININ_M_A_25_17_BITSETD_HPP
