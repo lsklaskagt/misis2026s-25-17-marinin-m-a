@@ -88,5 +88,5 @@ TEST_CASE("[bitsetd] - to_string formatting") {
     bs.set(4, true); 
     
     CHECK(bs.to_string(BitsetD::StrFormat::BinNoPreSep) == "10001");
-    CHECK(bs.to_string(BitsetD::StrFormat::Bin) == "b1'0001");
+    CHECK(bs.to_string(BitsetD::StrFormat::Bin) == "b01'0001");
 }
