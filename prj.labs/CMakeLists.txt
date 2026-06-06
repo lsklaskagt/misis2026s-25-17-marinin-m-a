@@ -1,1 +1,5 @@
-add_library(arrayd arrayd.cpp arrayd.hpp)
+add_subdirectory(arrayd)
+add_subdirectory(arrayt)
+add_subdirectory(complex)
+add_subdirectory(bitsetd)
+add_subdirectory(dio)
