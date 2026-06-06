@@ -1,54 +1,73 @@
-// 2026 by Dmitry Polevoy
-// МИСИС 2026 весна курс ООП
-
 #include "bitsetd.hpp"
-
 #include <stdexcept>
+#include <algorithm>
+
+void trim_chunks(std::int32_t size, std::vector<std::uint32_t>& chunks) noexcept {
+    if (size == 0) return;
+    std::int32_t last_bits = size % 32;
+    if (last_bits != 0) {
+        std::uint32_t mask = (std::uint32_t(1) << last_bits) - 1;
+        chunks.back() &= mask;
+    }
+}
 
 BitsetD::BitsetD(const std::int32_t size, const bool val)
   : size_(size)
-  , chunks_(chunks_count())
+  , chunks_((size + chunk_bi_s - 1) / chunk_bi_s)
 {
+  if (size_ <= 0) {
+    throw std::invalid_argument("BitsetD::BitsetD - non positive size");
+  }
   if (val) {
     std::fill(chunks_.begin(), chunks_.end(), 0xFFFFFFFFU);
+    trim_chunks(size_, chunks_);
   }
 }
 
 BitsetD::BitsetD(const std::uint64_t mask, const std::int32_t size) 
   : size_(size)
-  , chunks_{static_cast<uint32_t>(mask ),
+  , chunks_{static_cast<uint32_t>(mask),
             static_cast<uint32_t>(mask >> chunk_bi_s)} {
-  chunks_.resize(chunks_count());
+  if (size_ <= 0) {
+    throw std::invalid_argument("BitsetD::BitsetD - non positive size");
+  }
+  chunks_.resize(chunks_count(), 0U);
+  trim_chunks(size_, chunks_);
 }
 
 bool BitsetD::operator==(const BitsetD& rhs) const noexcept {
-  bool is_equal = size_ == rhs.size_;
-  for (int32_t i = 0; is_equal && i < size_; i += 1) {
-    is_equal = operator[](i) == rhs[i];
+  if (size_ != rhs.size_) {
+    return false;
   }
-  return is_equal;
+  for (size_t i = 0; i < chunks_.size(); ++i) {
+    if (chunks_[i] != rhs.chunks_[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void BitsetD::resize(const std::int32_t new_size, const bool val) {
   if (new_size <= 0) {
     throw std::invalid_argument("BitsetD::resize non positive new size");
   }
-  // TODO
-  //if (size_ < new_size) {
-  //  bits_.resize(bits_size());
-  //  if (size_ % 32 != 0) {
-  //    uint32_t& val = bits_[bits_size() - 1];
-  //    val
-  //  }
-  //}
+  std::int32_t old_size = size_;
   size_ = new_size;
+  chunks_.resize(chunks_count(), val ? 0xFFFFFFFFU : 0U);
+  
+  if (new_size > old_size && val) {
+    for (std::int32_t i = old_size; i < new_size; ++i) {
+        set(i, val);
+    }
+  }
+  trim_chunks(size_, chunks_);
 }
 
 bool BitsetD::get(const std::int32_t idx) const {
   if (idx < 0 || size_ <= idx) {
     throw std::out_of_range("BitsetD::get invalid index");
   }
-  return chunks_[idx / chunk_bi_s] & (UINT32_C(1) << idx % chunk_bi_s);
+  return (chunks_[idx / chunk_bi_s] & (UINT32_C(1) << (idx % chunk_bi_s))) != 0;
 }
 
 void BitsetD::set(const std::int32_t idx, const bool val) {
@@ -56,9 +75,9 @@ void BitsetD::set(const std::int32_t idx, const bool val) {
     throw std::out_of_range("BitsetD::set invalid index");
   }
   if (val) {
-    chunks_[idx / chunk_bi_s] |= UINT32_C(1) << idx % chunk_bi_s;
+    chunks_[idx / chunk_bi_s] |= (UINT32_C(1) << (idx % chunk_bi_s));
   } else {
-    chunks_[idx / chunk_bi_s] &= ~(UINT32_C(1) << idx % chunk_bi_s);
+    chunks_[idx / chunk_bi_s] &= ~(UINT32_C(1) << (idx % chunk_bi_s));
   }
 }
 
@@ -66,35 +85,63 @@ BitsetD& BitsetD::invert() noexcept {
   for (auto& bits : chunks_) {
     bits = ~bits;
   }
+  trim_chunks(size_, chunks_);
   return *this;
 }
 
-BitsetD& BitsetD::shift(const std::int32_t shift) noexcept {
-  const std::int32_t s = size();
-  BitsetD copy(s);
-  for (int32_t i = 0; i < s; i += 1) {
-    copy[(i - shift) % s] = operator[](i);
+void BitsetD::fill(const bool val) noexcept {
+  std::fill(chunks_.begin(), chunks_.end(), val ? 0xFFFFFFFFU : 0U);
+  trim_chunks(size_, chunks_);
+}
+
+BitsetD& BitsetD::shift(const std::int32_t shift_val) noexcept {
+  if (size_ == 0) return *this;
+  BitsetD copy(size_);
+  for (int32_t i = 0; i < size_; i += 1) {
+    int32_t target = (i + shift_val) % size_;
+    if (target < 0) {
+        target += size_;
+    }
+    if (get(i)) {
+        copy.set(target, true);
+    }
   }
   std::swap(chunks_, copy.chunks_);
   return *this;
 }
 
 BitsetD& BitsetD::operator<<=(const std::int32_t shift) {
-  for (int32_t i = size() - 1; shift <= i; i -= 1) {
-    operator[](i - shift) = operator[](i);
+  if (shift < 0) {
+    return operator>>=(-shift);
   }
-  for (int32_t i = shift; 0 <= i; i -= 1) {
-    operator[](i) = false;
+  if (shift >= size_) {
+    fill(false);
+    return *this;
+  }
+  for (int32_t i = size_ - 1; i >= 0; i -= 1) {
+    if (i >= shift) {
+        set(i, get(i - shift));
+    } else {
+        set(i, false);
+    }
   }
   return *this;
 }
 
 BitsetD& BitsetD::operator>>=(const std::int32_t shift) {
-  for (int32_t i = 0; i < size() - shift; i += 1) {
-    operator[](i) = operator[](i + shift);
+  if (shift < 0) {
+    return operator<<=(-shift);
   }
-  for (int32_t i = shift; i < size() - 1; i += 1) {
-    operator[](i) = false;
+  if (shift >= size_) {
+    fill(false);
+    return *this;
+  }
+  for (int32_t i = 0; i < size_; i += 1) {
+    if (i + shift < size_) {
+        set(i, get(i + shift));
+    } else {
+        set(i, false);
+    }
   }
   return *this;
 }
@@ -103,9 +150,8 @@ BitsetD& BitsetD::operator&=(const BitsetD& rhs) {
   if (size_ != rhs.size_) {
     throw std::invalid_argument("BitsetD::operator&= different size");
   }
-  const std::int32_t chunks_count = rhs.chunks_count();
-  for (int32_t i_u = 0; i_u < chunks_count; i_u += 1) {
-    chunks_[i_u] |= rhs.chunks_[i_u];
+  for (size_t i = 0; i < chunks_.size(); ++i) {
+    chunks_[i] &= rhs.chunks_[i];
   }
   return *this;
 }
@@ -114,9 +160,8 @@ BitsetD& BitsetD::operator|=(const BitsetD& rhs) {
   if (size_ != rhs.size_) {
     throw std::invalid_argument("BitsetD::operator|= different size");
   }
-  const std::int32_t chunks_count = rhs.chunks_count();
-  for (int32_t i_u = 0; i_u < chunks_count; i_u += 1) {
-    chunks_[i_u] |= rhs.chunks_[i_u];
+  for (size_t i = 0; i < chunks_.size(); ++i) {
+    chunks_[i] |= rhs.chunks_[i];
   }
   return *this;
 }
@@ -125,13 +170,29 @@ BitsetD& BitsetD::operator^=(const BitsetD& rhs) {
   if (size_ != rhs.size_) {
     throw std::invalid_argument("BitsetD::operator^= different size");
   }
-  const std::int32_t chunks_count = rhs.chunks_count();
-  for (int32_t i_u = 0; i_u < chunks_count; i_u += 1) {
-    chunks_[i_u] ^= rhs.chunks_[i_u];
+  for (size_t i = 0; i < chunks_.size(); ++i) {
+    chunks_[i] ^= rhs.chunks_[i];
   }
   return *this;
 }
 
 std::string BitsetD::to_string(const BitsetD::StrFormat fmt, const int32_t len) const {
-  return "empty";
+  if (size_ == 0) return "empty";
+  
+  if (fmt == StrFormat::BinNoPreSep) {
+    std::string res;
+    for (int32_t i = size_ - 1; i >= 0; --i) {
+      res += (get(i) ? '1' : '0');
+    }
+    return res;
+  }
+  
+  std::string res = "b0";
+  for (int32_t i = size_ - 1; i >= 0; --i) {
+    res += (get(i) ? '1' : '0');
+    if (i > 0 && (i % 4 == 0)) {
+      res += '\'';
+    }
+  }
+  return res;
 }
